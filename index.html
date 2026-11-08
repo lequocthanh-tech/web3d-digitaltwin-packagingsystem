@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web 3D Digital Twin - Dây chuyền Đóng gói Delta & 6-DOF Arm</title>
+  <link rel="stylesheet" href="css/style.css?v=3.6">
+  
+  <!-- ES Module Import Map for Three.js without build step -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <div id="app-container">
+    
+    <!-- ====================================================================
+         LEFT: 3D VIEWPORT (75%)
+         ==================================================================== -->
+    <main id="viewport-container">
+      <canvas id="canvas3d"></canvas>
+
+      <!-- Unified Compact Top Header (Single Row: 42px) -->
+      <header class="scada-topbar-unified" id="scada-topbar-unified">
+        <!-- 1. Brand Logo + Workstation Dropdown Selector -->
+        <div class="topbar-left-cluster">
+          <div class="topbar-brand">
+            <span class="brand-badge">DT</span>
+            <div class="brand-title-compact">
+              <span class="main-title">DIGITAL TWIN</span>
+              <span class="sub-title">PACKAGING CELL</span>
+            </div>
+          </div>
+
+          <!-- Workstation Switcher Dropdown (Replaces entire 10-button row!) -->
+          <div class="ws-dropdown-container" id="ws-dropdown-container">
+            <button class="ws-dropdown-trigger" id="ws-dropdown-trigger" type="button" title="Bấm để chọn môi trường trạm làm việc (Workstation)">
+              <span id="ws-active-icon">🏭</span>
+              <span id="ws-active-label">3D FACTORY & SCADA</span>
+              <span class="dropdown-caret">▼</span>
+            </button>
+            <div class="ws-dropdown-menu" id="ws-dropdown-menu">
+              <div class="dropdown-header-label">MÔI TRƯỜNG LÀM VIỆC (WORKSTATIONS)</div>
+              
+              <button class="ws-item-btn ws-btn active" data-ws="default" id="ws-btn-default">
+                <span class="ws-item-icon">🏭</span>
+                <span class="ws-item-text">3D FACTORY & SCADA I/O</span>
+                <span class="ws-item-badge">CHÍNH</span>
+              </button>
+
+              <button class="ws-item-btn ws-btn" data-ws="pendant" id="ws-btn-pendant">
+                <span class="ws-item-icon">📱</span>
+                <span class="ws-item-text">STATION 1: TEACH PENDANT (YASKAWA)</span>
+              </button>
+
+              <button class="ws-item-btn ws-btn" id="btn-quick-float-pendant">
+                <span class="ws-item-icon">🪟</span>
+                <span class="ws-item-text">VIRTUAL PENDANT (CỬA SỔ NỔI 6-DOF)</span>
+              </button>
+
+              <button class="ws-item-btn ws-btn" data-ws="delta" id="ws-btn-delta">
+                <span class="ws-item-icon">⚡</span>
+                <span class="ws-item-text">DELTA 3-DOF STATION</span>
+              </button>
+
+              <button class="ws-item-btn ws-btn" id="btn-quick-float-delta">
+                <span class="ws-item-icon">🪟</span>
+                <span class="ws-item-text">DELTA PENDANT (CỬA SỔ NỔI DELTA)</span>
+              </button>
+
+              <button class="ws-item-btn ws-btn" data-ws="mpe720" id="ws-btn-mpe720">
+                <span class="ws-item-icon">💻</span>
+                <span class="ws-item-text">STATION 2: MPE720 PLC & MOTION</span>
+              </button>
+
+              <button class="ws-item-btn ws-btn" data-ws="csharp" id="ws-btn-csharp">
+                <span class="ws-item-icon">⚙️</span>
+                <span class="ws-item-text">STATION 3: C# / QT PC & VISION</span>
+              </button>
+
+              <button class="ws-item-btn ws-btn" data-ws="vipa" id="ws-btn-vipa">
+                <span class="ws-item-icon">📊</span>
+                <span class="ws-item-text">STATION 4: VIPA HMI & TELEMETRY</span>
+              </button>
+
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-header-label">CÔNG CỤ PHÂN TÍCH & SỰ CỐ</div>
+
+              <button class="ws-item-btn ws-btn" id="ws-btn-matlab">
+                <span class="ws-item-icon">📈</span>
+                <span class="ws-item-text">MATLAB KINEMATICS PLOTTER</span>
+              </button>
+
+              <button class="ws-item-btn ws-btn" id="ws-btn-faults">
+                <span class="ws-item-icon">🚨</span>
+                <span class="ws-item-text">FAULT INJECTION (GIẢ LẬP SỰ CỐ)</span>
+              </button>
+
+              <button class="ws-item-btn ws-btn" id="ws-btn-master-reset" style="color:#fbbf24;">
+                <span class="ws-item-icon">🔄</span>
+                <span class="ws-item-text">MASTER RESET TOÀN CELL</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Quick Action Buttons (Middle Cluster) -->
+        <div class="topbar-mid-actions">
+          <!-- Auto Packaging Demo Cycle Toggle -->
+          <button class="btn-top-action btn-auto-demo" id="btn-auto-demo-cycle" title="Bật/Tắt chu trình đóng gói tự động phối hợp 2 robot">
+            <span class="scada-led led-green" id="led-auto-demo"></span>
+            <span id="label-auto-demo">AUTO DEMO</span>
+          </button>
+
+          <!-- Maintenance Safety Door Quick Toggle -->
+          <button class="btn-top-action" id="btn-quick-safety-door" title="Mở / Đóng Cửa Hàng Rào Bảo Trì (Safety Gate Interlock)">
+            <span class="scada-led led-green" id="led-safety-door-top"></span>
+            <span id="label-safety-door-top">CỬA RÀO: ĐÓNG</span>
+          </button>
+
+          <!-- Main Industrial Cabinet Power Isolator Quick Toggle -->
+          <button class="btn-top-action" id="btn-quick-cabinet-power" title="Bật / Tắt Công Tắc Nguồn Tổng 380V Tủ Điện (Main Power Isolator Switch)">
+            <span class="scada-led led-red" id="led-cabinet-power-top"></span>
+            <span id="label-cabinet-power-top">NGUỒN TỦ: OFF</span>
+          </button>
+
+          <!-- Quick Spawn Defect Piece Button (Shortcut: D) -->
+          <button class="btn-top-action btn-spawn-defect" id="btn-quick-spawn-defect" title="Thả 1 phôi lỗi NG tại Băng tải 1 [D]">
+            <span class="scada-led led-red active" style="display:inline-block;"></span>
+            <span>THẢ LỖI [D]</span>
+          </button>
+        </div>
+
+        <!-- 3. Essential Telemetry Chips + More Metrics Dropdown + Collapse Button -->
+        <div class="topbar-right-telemetry">
+          <div class="top-pill" title="Chỉ số hiệu suất OEE thời gian thực">
+            <span class="scada-led led-green active" id="led-oee-chip" style="display:inline-block;"></span>
+            <span>OEE: <b id="chip-oee-val" style="color:#22c55e;">100.0%</b></span>
+          </div>
+
+          <div class="top-pill" title="Số lượng phế phẩm NG đã loại bỏ">
+            <span class="scada-led led-red" id="led-ng-chip" style="display:inline-block;"></span>
+            <span>NG: <b id="chip-ng-defect" style="color:#ef4444;">0</b></span>
+          </div>
+
+          <div class="top-pill" title="Số lượng thùng carton đã dán băng keo">
+            <span class="scada-led led-green" id="led-sealed-chip" style="display:inline-block;"></span>
+            <span>SEALED: <b id="chip-sealed-boxes" style="color:#f59e0b;">0</b></span>
+          </div>
+
+          <div class="top-pill" title="FPS thời gian thực">
+            <span>FPS: <b id="telemetry-fps" style="color:#38bdf8;">30 FPS</b></span>
+          </div>
+
+          <!-- Secondary Metrics Dropdown -->
+          <div class="extra-metrics-container" id="extra-metrics-container">
+            <button class="btn-extra-metrics" id="btn-extra-metrics-trigger" type="button" title="Xem thêm các chỉ số SCADA I/O khác">
+              <span>📊 Số liệu ▾</span>
+            </button>
+            <div class="extra-metrics-popup" id="extra-metrics-popup">
+              <div class="extra-metric-row">
+                <span class="scada-led led-green" id="led-vision-status"></span>
+                <span>VISION:</span> <b id="chip-vision">SCANNING</b>
+              </div>
+              <div class="extra-metric-row">
+                <span>INSPECTED:</span> <b id="chip-total-inspected">0</b>
+              </div>
+              <div class="extra-metric-row">
+                <span class="scada-led led-green active" id="led-verified-chip"></span>
+                <span>VERIFIED:</span> <b id="chip-verified-boxes" style="color:#4ade80;">0</b>
+              </div>
+              <div class="extra-metric-row">
+                <span>WAREHOUSE:</span> <b id="chip-warehouse-boxes" style="color:#38bdf8;">0</b>
+              </div>
+              <div class="extra-metric-row">
+                <span>ROTARY ENC:</span> <b id="chip-encoder-pulses" style="color:#38bdf8;">0</b> pls
+              </div>
+              <div class="extra-metric-row">
+                <span class="scada-led led-yellow" id="led-di11-chip"></span>
+                <span>DI_11:</span> <b id="chip-di11">CLEAR</b>
+              </div>
+              <div class="extra-metric-row">
+                <span class="scada-led led-cyan" id="led-di12-chip"></span>
+                <span>DI_12:</span> <b id="chip-di12">WAITING</b>
+              </div>
+              <div class="extra-metric-row">
+                <span>SYS STATE:</span> <b id="telemetry-line-state">OFFLINE</b>
+              </div>
+            </div>
+          </div>
+
+          <!-- Nút Thu gọn thanh topbar (Ẩn để xem 3D thoáng 100%) -->
+          <button class="btn-topbar-collapse" id="btn-topbar-collapse" type="button" title="Thu gọn thanh công cụ lên trên để mở rộng không gian 3D">
+            <span>▲</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Nút nổi để mở lại thanh công cụ khi đã thu gọn -->
+      <button class="topbar-reopen-tab" id="topbar-reopen-tab" type="button" title="Mở lại thanh điều khiển và danh sách trạm làm việc">
+        <span>▼ ĐIỀU KHIỂN & TRẠM LÀM VIỆC</span>
+      </button>
+
+      <!-- Fault Injection Drawer Container -->
+      <div id="fault-injection-container"></div>
+
+      <!-- Floating Camera Navigation & Zoom Tools -->
+      <div class="viewport-cam-tools">
+        <button class="cam-tool-btn" id="btn-zoom-in" title="Phóng to (Zoom In)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+        <button class="cam-tool-btn" id="btn-zoom-out" title="Thu nhỏ (Zoom Out)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+        <button class="cam-tool-btn" id="btn-reset-cam" title="Đặt lại góc nhìn chuẩn (Reset View)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        </button>
+        <button class="cam-tool-btn" id="btn-auto-rotate" title="Bật/Tắt xoay tự động 360°">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </button>
+        <button class="cam-tool-btn" id="btn-tool-fly-cam" title="Chế độ Tự Do Factory I/O (Free / Fly Camera) [Phím V]">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 19 21 12 17 5 21 12 2"></polygon></svg>
+        </button>
+      </div>
+
+      <!-- Factory I/O Fly Camera Active HUD Pill -->
+      <div id="fly-cam-badge" class="fly-cam-badge" style="display: none;">
+        <span class="fly-indicator-dot"></span>
+        <span class="fly-badge-title">FACTORY I/O FREE CAM</span>
+        <span class="fly-badge-hint">↑↓←→ Di chuyển | Chuột phải: Xoay nhìn | Shift: Tăng tốc | Phím V: Thoát</span>
+      </div>
+
+      <!-- Mouse & Gesture Navigation Hints -->
+      <div class="mouse-nav-hint">
+        <span><span class="key-tag">Mũi tên ↑↓←→ / WASD</span> Bay & di chuyển tiến/lùi/trái/phải (Factory I/O)</span>
+        <span><span class="key-tag">Shift + Mũi tên</span> Tăng tốc bay (2.4x Speed Boost)</span>
+        <span><span class="key-tag">Space / C</span> Bay lên cao / Hạ thấp cao độ</span>
+        <span><span class="key-tag">Chuột phải (Fly Cam)</span> Xoay góc nhìn tự do 360° tại chỗ</span>
+        <span><span class="key-tag">Chuột trái (Orbit)</span> Xoay quanh tâm ngắm | <span class="key-tag">Phím V</span> Bật/Tắt Fly Cam</span>
+      </div>
+
+      <!-- Bottom Camera Navigation Toolbar -->
+      <nav class="camera-toolbar">
+        <button class="cam-btn active" data-cam="overview">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+          Overview 3D
+        </button>
+        <button class="cam-btn" data-cam="front">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line></svg>
+          Front View (TikTok Angle)
+        </button>
+        <button class="cam-btn" data-cam="delta">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 22 22 22"></polygon></svg>
+          Delta Station
+        </button>
+        <button class="cam-btn" data-cam="arm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+          6-DOF Arm & Box
+        </button>
+        <button class="cam-btn" data-cam="topdown">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="12" cy="12" r="3"></circle></svg>
+          Top-Down Layout
+        </button>
+        <button class="cam-btn" data-cam="agv">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+          AGV & Warehouse
+        </button>
+        <button class="cam-btn" data-cam="cabinet" id="btn-cam-view-cabinet" title="Lia camera đến cận cảnh Tủ điện Điều khiển Yaskawa (MP3300, YRC1000micro, J1000, Servo Drives)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="2" x2="12" y2="22"></line><path d="M9 10h1"></path><path d="M14 10h1"></path></svg>
+          GÓC NHÌN TỦ ĐIỆN (VIEW CABINET)
+        </button>
+        <button class="cam-btn" id="btn-toggle-fly-cam" style="border-color: #facc15; color: #fef08a;" title="Kích hoạt góc nhìn tự do kiểu Factory I/O (Free / Fly Camera) [Phím V]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 19 21 12 17 5 21 12 2"></polygon></svg>
+          🕹️ Factory I/O Cam
+        </button>
+        <button class="cam-btn" id="btn-pick-pivot" style="border-color: #38bdf8; color: #7dd3fc;" title="Bấm vào đây rồi click bất kỳ vị trí nào trên 3D để đổi tâm xoay ngay lập tức">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>
+          🎯 Đặt Tâm Xoay
+        </button>
+        <button class="cam-btn" id="btn-toggle-cabinet-shell-bar" style="border-color: #f59e0b; color: #facc15;" title="Ẩn/Hiện vỏ tủ & mở cánh tủ điện để soi kết cấu PLC MP3300, YRC1000micro, biến tần J1000 và bộ Servo Drive bên trong">
+          🔍 Ẩn/Hiện Vỏ Tủ
+        </button>
+        <button class="cam-btn" id="btn-toggle-fence-mesh" style="border-color: #38bdf8; color: #7dd3fc;" title="Ẩn/Hiện nhanh lưới hàng rào an toàn quanh buồng máy để quan sát 100% không vướng">
+          🕸 Ẩn/Hiện Lưới Rào
+        </button>
+        <button class="cam-btn" id="btn-toggle-trajectory-trails" style="border-color: #f59e0b; color: #fbbf24;" title="Bật/Tắt hiển thị đồ thị tuyến di chuyển 3D của cả 2 Robot (Trajectory Trail)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          📈 Đồ Thị Quỹ Đạo 3D
+        </button>
+      </nav>
+
+      <!-- Viewport Legend Overlay -->
+      <div class="viewport-overlay-legend">
+        <div class="legend-item"><span class="legend-color" style="background: #facc15;"></span> Robot Mechanism (Yellow)</div>
+        <div class="legend-item"><span class="legend-color" style="background: #00ff88;"></span> Cognex Vision Laser Sheet</div>
+        <div class="legend-item"><span class="legend-color" style="background: #ef4444;"></span> Sensor DI_11 Optical Beam</div>
+        <div class="legend-item"><span class="legend-color" style="background: #06b6d4;"></span> DH Coordinate Reference</div>
+      </div>
+
+      <!-- ==================================================================
+           GIAI ĐOẠN 4 - PHẦN 1: COGNEX MACHINE VISION STUDIO (PIP WINDOW)
+           ================================================================== -->
+      <div class="vision-studio-window minimized" id="cognex-vision-floating-window">
+        <div class="vision-studio-header" id="vision-studio-drag-header">
+          <div class="vision-studio-title">
+            <span class="scada-led led-green active" id="led-vision-studio"></span>
+            <span>COGNEX VISION PRO - SENSOR #CAM01 (CONVEYOR 1)</span>
+          </div>
+          <div class="vision-studio-header-actions">
+            <button class="vision-min-btn" id="btn-vision-minimize" title="Phóng to cửa sổ Vision Studio">➕</button>
+          </div>
+        </div>
+
+        <div class="vision-studio-body" id="vision-studio-body" style="display: none;">
+          <!-- Màn hình soi (Top-down Orthographic PIP Feed + 2D HUD Overlay) -->
+          <div class="vision-canvas-wrap">
+            <canvas id="vision-canvas" width="330" height="220"></canvas>
+          </div>
+
+          <!-- Bộ nút tương tác Filter & Chế độ chụp -->
+          <div class="vision-controls-bar">
+            <div class="vision-filter-group">
+              <button class="vision-ctrl-btn active" id="btn-vision-filter-color" title="Chế độ RAW COLOR: Ảnh màu thực tế từ camera">Color</button>
+              <button class="vision-ctrl-btn" id="btn-vision-filter-gray" title="Chế độ GRAYSCALE: Chuyển ảnh sang mức xám 8-bit">Gray</button>
+              <button class="vision-ctrl-btn" id="btn-vision-filter-binary" title="Chế độ BINARY THRESHOLD: Ảnh nhị phân đen/trắng (Threshold = 128)">Binary</button>
+            </div>
+            <div class="vision-trigger-group">
+              <button class="vision-ctrl-btn" id="btn-vision-single-trigger" title="Chụp đơn (Single Trigger)">📸 Single Trigger</button>
+              <button class="vision-ctrl-btn active" id="btn-vision-live-toggle" title="Bật/Tắt luồng Live Video">🎥 Live Video: ON</button>
+            </div>
+          </div>
+
+          <!-- Thanh trạng thái bên dưới (Inspection Telemetry) -->
+          <div class="vision-telemetry-footer">
+            <div class="vision-telem-row">
+              <span class="vision-telem-label">Status:</span>
+              <span class="vision-status-badge pass" id="vision-ui-status-badge">PASS [OK]</span>
+              <span class="vision-telem-label" style="margin-left:auto;">Processing Time:</span>
+              <b class="vision-proctime-val" id="vision-ui-proctime">11 ms</b>
+            </div>
+            <div class="vision-telem-row">
+              <span class="vision-telem-label">Centroid:</span>
+              <span class="vision-centroid-val" id="vision-ui-centroid">X=<b>+0.0</b>mm, Y=<b>+0.0</b>mm, Angle=<b>+0.0°</b></span>
+            </div>
+            <div class="vision-telem-row">
+              <span class="vision-telem-label">Blob Feature:</span>
+              <span class="vision-centroid-val" id="vision-ui-area">Area: <b>3320</b> px² | Size: <b>180×60</b> mm</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ====================================================================
+         MIDDLE/RIGHT: ENGINEERING WORKSTATION CONTAINER (52% IN SPLIT MODE)
+         ==================================================================== -->
+    <section id="workstation-container" style="display: none;"></section>
+
+    <!-- ====================================================================
+         RIGHT: HARDWARE INSPECTOR & JOGGER DOCK (25%)
+         ==================================================================== -->
+    <aside id="inspector-dock">
+      
+      <!-- Dock Header -->
+      <div class="dock-header">
+        <h2>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
+          HARDWARE INSPECTOR & JOGGER
+        </h2>
+        <span class="dock-status-tag" id="dock-system-tag">OFFLINE</span>
+      </div>
+
+      <!-- Dock Tab Navigation Bar -->
+      <nav class="dock-tab-nav">
+        <button class="dock-tab-btn active" id="tab-btn-jogger" data-tab="tab-pane-jogger" title="Hardware Jogger">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          JOGGER
+        </button>
+        <button class="dock-tab-btn" id="tab-btn-kinematics" data-tab="tab-pane-kinematics" title="Kinematics & Trajectory Lab">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          KINEMATICS
+        </button>
+        <button class="dock-tab-btn" id="tab-btn-control-panel" data-tab="tab-pane-control-panel" title="Yaskawa Control Panel & I/O Box">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          CTRL PANEL
+        </button>
+        <button class="dock-tab-btn" id="tab-btn-udp-sniffer" data-tab="tab-pane-udp-sniffer" title="218IFD Ethernet & Packet Sniffer">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          UDP SNIFFER
+        </button>
+        <button class="dock-tab-btn" id="tab-btn-oee" data-tab="tab-pane-oee" title="Hệ thống Giám sát Chỉ số OEE Thời gian thực & Quản trị Chất lượng Thông minh">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+          OEE & ANALYTICS
+        </button>
+      </nav>
+
+      <!-- Dock Scroll Content -->
+      <div class="dock-content">
+
+        <!-- ================================================================
+             TAB 1: HARDWARE JOGGER (GIAI ĐOẠN 1)
+             ================================================================ -->
+        <div id="tab-pane-jogger" class="tab-pane active">
+
+        <!-- 1. System Master Power & Conveyors Card -->
+        <section class="scada-card">
+          <div class="card-title">
+            <span>MASTER POWER & CONVEYORS</span>
+            <span class="card-tag">SYS_CTRL</span>
+          </div>
+
+          <!-- Master Power Button -->
+          <div class="power-banner">
+            <button class="btn-power-master" id="btn-system-power">
+              <span class="scada-led led-red" id="led-power-status"></span>
+              <span id="power-status-label">POWER ON / SERVO ON</span>
+            </button>
+          </div>
+
+          <!-- 3 Conveyors Toggles -->
+          <div style="margin-top: 12px;">
+            <div class="conveyor-control-row">
+              <div class="conveyor-info">
+                <span class="conveyor-name">
+                  <span class="scada-led led-green" id="led-conv1"></span>
+                  Conveyor 1 (Infeed)
+                </span>
+                <span class="conveyor-desc">Lane In | Z = -0.4 | Vision Scanning</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-conv1" class="conveyor-toggle-input" disabled>
+                <span class="slider-switch"></span>
+              </label>
+            </div>
+
+            <div class="conveyor-control-row">
+              <div class="conveyor-info">
+                <span class="conveyor-name">
+                  <span class="scada-led led-green" id="led-conv2"></span>
+                  Conveyor 2 (Collation)
+                </span>
+                <span class="conveyor-desc">Lane Out | Z = +0.15 | DI_11 Sensor</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-conv2" class="conveyor-toggle-input" disabled>
+                <span class="slider-switch"></span>
+              </label>
+            </div>
+
+            <div class="conveyor-control-row">
+              <div class="conveyor-info">
+                <span class="conveyor-name">
+                  <span class="scada-led led-green" id="led-conv3"></span>
+                  Conveyor 3 (Carton Box)
+                </span>
+                <span class="conveyor-desc">Box Lane | X = -1.8 | DI_12 Stopper</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-conv3" class="conveyor-toggle-input" disabled>
+                <span class="slider-switch"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Industrial Safety Enclosure & Maintenance Door Interlock Card -->
+          <div style="margin-top: 12px; padding: 10px; background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-left: 3px solid #f59e0b; border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 10.5px; font-weight: 800; color: #facc15; display: flex; align-items: center; gap: 5px;">
+                <span>🛡</span> CỬA BẢO TRÌ & KHÓA AN TOÀN
+              </span>
+              <span class="dock-status-tag online" id="status-safety-door" style="background: rgba(34, 197, 94, 0.2); color: #4ade80;">SAFE / CLOSED</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+              <button class="action-btn" id="btn-toggle-safety-door" style="background: #1e293b; border-color: #f59e0b; color: #facc15; font-weight: 700; height: 34px; font-size: 10.5px;" title="Mở hoặc Đóng cửa bảo trì rào an toàn (Safety Interlock)">
+                🚪 MỞ/ĐÓNG CỬA BẢO TRÌ
+              </button>
+              <button class="action-btn" id="btn-safety-reset-interlock" style="background: #065f46; border-color: #10b981; color: #6ee7b7; font-weight: 700; height: 34px; font-size: 10px;" title="Reset khóa an toàn và kích hoạt lại Robot On sau khi đóng cửa">
+                🔄 RESET / ROBOT ON
+              </button>
+            </div>
+          </div>
+
+          <!-- Industrial Control Cabinet & Yaskawa Hardware Inspection Card -->
+          <div style="margin-top: 12px; padding: 10px; background: rgba(15, 23, 42, 0.88); border: 1px solid #334155; border-left: 3px solid #38bdf8; border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 10.5px; font-weight: 800; color: #38bdf8; display: flex; align-items: center; gap: 5px;">
+                <span>⚡</span> TỦ ĐIỆN YASKAWA (MP3300 / YRC1000 / J1000)
+              </span>
+              <span class="dock-status-tag" id="status-cabinet-power" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">ISOLATED (OFF)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #cbd5e1; margin-bottom: 8px; padding: 4px 6px; background: rgba(2, 6, 23, 0.65); border-radius: 4px; font-family: var(--font-mono);">
+              <span>J1000 VFD: <b id="ui-cabinet-j1000-freq" style="color: #ef4444;">0.0 Hz</b></span>
+              <span>MP3300 / YRC: <b id="ui-cabinet-plc-led" style="color: #94a3b8;">OFFLINE</b></span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+              <button class="action-btn" id="btn-view-cabinet-dock" style="background: #1e293b; border-color: #38bdf8; color: #38bdf8; font-weight: 700; height: 32px; font-size: 10px;" title="Di chuyển góc nhìn Camera đến cận cảnh Tủ điện chính">
+                🎥 GÓC NHÌN TỦ ĐIỆN
+              </button>
+              <button class="action-btn" id="btn-toggle-cabinet-shell" style="background: #1e293b; border-color: #f59e0b; color: #facc15; font-weight: 700; height: 32px; font-size: 10px;" title="Mở cánh cửa tủ và làm trong suốt vỏ tủ để quan sát MP3300, YRC1000micro, J1000 và Servo Drives bên trong">
+                🔍 ẨN/HIỆN VỎ TỦ
+              </button>
+            </div>
+          </div>
+
+          <!-- Chocolate Infeed Rate & Speed Controller -->
+          <div style="margin-top: 12px; padding: 10px; background: rgba(15, 23, 42, 0.75); border: 1px solid #334155; border-left: 3px solid var(--scada-cyan); border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 10.5px; font-weight: 800; color: #f8fafc; letter-spacing: 0.3px;">TỐC ĐỘ RA SÔ-CÔ-LA (INFEED RATE):</span>
+              <span id="val-choco-feed-speed" style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--scada-cyan);">1.0x (0.28 m/s)</span>
+            </div>
+            <input type="range" class="joint-slider" id="slider-choco-feed-speed" min="0.2" max="2.5" step="0.1" value="1.0" style="margin-bottom: 8px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;">
+              <button class="action-btn choco-rate-btn" data-rate="0.3" style="padding: 5px 4px; font-size: 10px;" title="Sô-cô-la ra chậm rãi để quan sát từng bước gắp xếp và trạng thái robot chờ hàng">🐢 Chậm (Chờ hàng)</button>
+              <button class="action-btn choco-rate-btn active" data-rate="1.0" style="padding: 5px 4px; font-size: 10px; border-color: var(--scada-cyan); color: var(--scada-cyan);" title="Tốc độ dây chuyền chuẩn công nghiệp">⚙️ Chuẩn (1.0x)</button>
+              <button class="action-btn choco-rate-btn" data-rate="2.2" style="padding: 5px 4px; font-size: 10px;" title="Sô-cô-la tuôn ra dồn dập, cả Delta và Arm chạy 100% công suất">⚡ Siêu Tốc (Max)</button>
+            </div>
+          </div>
+
+          <!-- Manual Spawner Buttons -->
+          <div class="btn-grid">
+            <button class="action-btn" id="btn-spawn-product">+ Spawn Product</button>
+            <button class="action-btn" id="btn-spawn-pack">+ Spawn 4-Pack</button>
+            <button class="action-btn" id="btn-spawn-box">+ Spawn Empty Box</button>
+            <button class="action-btn" id="btn-clear-objects">Clear Objects</button>
+            <button class="action-btn" id="btn-quick-run-cycle" style="grid-column: span 2; margin-top: 6px; background: linear-gradient(135deg, #059669, #10b981); color: #fff; font-weight: 700; height: 34px; border: 1px solid #34d399; font-size: 11px;" title="Chạy ngay 1 chu trình gắp xếp tự động thực tế">
+              ▶ TEST CHU TRÌNH GẮP (1-CYCLE)
+            </button>
+            <button class="action-btn btn-defect-inject" id="btn-inject-defect" style="grid-column: span 2; margin-top: 4px; background: linear-gradient(135deg, #991b1b, #dc2626); color: #ffffff; font-weight: 800; height: 36px; border: 2px solid #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.35); font-size: 10.5px; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Thả ngay 1 phôi lỗi NG đỏ rực tại đầu Băng tải 1 (Phím tắt: D)">
+              <span>🚨</span> THẢ 1 PHÔI LỖI (SPAWN DEFECT PIECE) [D]
+            </button>
+          </div>
+
+          <!-- Anti-Lag Graphics Performance Selector -->
+          <div class="quality-select-group">
+            <span>CHẾ ĐỘ HIỂN THỊ (ANTI-LAG):</span>
+            <div class="quality-buttons">
+              <button class="q-btn" data-q="high">Ultra 60FPS</button>
+              <button class="q-btn" data-q="balanced">Balanced</button>
+              <button class="q-btn active" data-q="fast">Siêu Nhẹ (Low GPU)</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. 6-DOF Industrial Arm Card: Yaskawa YRC1000micro Virtual Teach Pendant -->
+        <section class="scada-card" style="border-left: 3px solid #38bdf8;">
+          <div class="card-title">
+            <span style="color: #fff; font-weight: 800;">YASKAWA YRC1000micro // TEACH PENDANT</span>
+            <span class="card-tag" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 2px 6px; border-radius: 4px;">BÀI 1 ĐHBK TPHCM</span>
+          </div>
+
+          <!-- Academic DH & Trajectory Trail Checkboxes for 6-DOF Arm -->
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
+            <label class="checkbox-row" style="margin: 0;">
+              <input type="checkbox" id="chk-show-dh">
+              <span>Hiển thị Hệ tọa độ DH {0}..{6} & Đường dọi (Robot Arm)</span>
+            </label>
+            <label class="checkbox-row" style="margin: 0;">
+              <input type="checkbox" id="chk-show-arm-trail">
+              <span>Hiển thị Đường quỹ đạo di chuyển TCP (Robot Arm - Cyan)</span>
+            </label>
+          </div>
+
+          <!-- Virtual Teach Pendant Hub (Thay thế hoàn toàn thanh trượt phẳng) -->
+          <div class="pendant-dock-hub">
+            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+              <button class="action-btn" id="btn-open-float-pendant" style="flex: 1; background: linear-gradient(135deg, #0284c7, #0369a1); border-color: #38bdf8; color: #fff; font-weight: 700; height: 36px;" title="Mở bộ lập trình cầm tay dạng cửa sổ nổi kéo thả">
+                📱 MỞ TAY CẦM NỔI
+              </button>
+              <button class="action-btn" id="btn-dock-pendant-here" style="flex: 1; background: #1e293b; border-color: #475569; color: #f1f5f9; font-weight: 700; height: 36px;" title="Ghim bộ lập trình cầm tay vào thanh bên phải">
+                📌 GHIM VÀO ĐÂY
+              </button>
+            </div>
+
+            <!-- Quick Link to 6-DOF MATLAB Plotter -->
+            <button class="action-btn" id="btn-open-matlab-from-arm" style="width: 100%; margin-bottom: 8px; background: #0f2b5c; border-color: #3b82f6; color: #93c5fd; font-weight: 600; height: 30px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Xem đồ thị động học MATLAB cho 6 bậc tự do">
+              <span>📈</span>
+              <span>ĐỒ THỊ ĐỘNG HỌC MATLAB 6 BẬC (THETA 1..6)</span>
+            </button>
+
+            <!-- Live Interlock & Hardware Status Readouts -->
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-bottom: 8px;">
+              <div class="coord-box"><span>MODE:</span><b id="dock-status-mode" style="color:#facc15;">TEACH</b></div>
+              <div class="coord-box"><span>SERVO:</span><b id="dock-status-servo" style="color:#4ade80;">ON READY</b></div>
+              <div class="coord-box"><span>DEADMAN:</span><b id="dock-status-deadman" style="color:#4ade80;">LIGHT (SAFE)</b></div>
+              <div class="coord-box"><span>COORD:</span><b id="dock-status-coord" style="color:#38bdf8;">JOINT</b></div>
+            </div>
+
+            <!-- Cartesian TCP Readout -->
+            <div class="cartesian-box" style="margin-bottom: 8px;">
+              <div class="coord-item">
+                <span class="coord-label">TCP X (m)</span>
+                <span class="coord-val" id="arm-tcp-x">-1.200</span>
+              </div>
+              <div class="coord-item">
+                <span class="coord-label">TCP Y (m)</span>
+                <span class="coord-val" id="arm-tcp-y">0.910</span>
+              </div>
+              <div class="coord-item">
+                <span class="coord-label">TCP Z (m)</span>
+                <span class="coord-val" id="arm-tcp-z">0.150</span>
+              </div>
+            </div>
+
+            <!-- Preset Target Poses (Bài 1) -->
+            <div class="preset-bar">
+              <button class="preset-btn" id="btn-arm-home">Home Pose (P000)</button>
+              <button class="preset-btn" id="btn-arm-pick">Pick Belt 2 (P002)</button>
+              <button class="preset-btn" id="btn-arm-place">Place Box (P004)</button>
+            </div>
+
+            <!-- Mount Slot for Teach Pendant when Docked into this Inspector Card -->
+            <div id="dock-teach-pendant-mount" style="display: none; margin-top: 10px;"></div>
+          </div>
+        </section>
+
+        <!-- 3. Delta Robot 4-DOF Card -->
+        <section class="scada-card">
+          <div class="card-title">
+            <span>ROBOT DELTA 4 BẬC (4-DOF GANTRY)</span>
+            <span class="card-tag">POS: X=+1.2, Z=-0.1</span>
+          </div>
+
+          <!-- Coordinate & Trajectory Trail Checkboxes for Delta Robot -->
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
+            <label class="checkbox-row" style="margin: 0;">
+              <input type="checkbox" id="chk-show-delta-coords">
+              <span>Hiển thị Hệ tọa độ & Đường dọi tâm hút (Robot Delta)</span>
+            </label>
+            <label class="checkbox-row" style="margin: 0;">
+              <input type="checkbox" id="chk-show-delta-trail">
+              <span>Hiển thị Đường quỹ đạo di chuyển (Robot Delta - Vàng)</span>
+            </label>
+          </div>
+
+          <!-- Quick Link to Delta MATLAB Plotter -->
+          <button class="action-btn" id="btn-open-matlab-from-delta" style="width: 100%; margin-bottom: 8px; background: #2e1a05; border-color: #f59e0b; color: #fde68a; font-weight: 600; height: 30px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Xem đồ thị động học MATLAB cho Robot Delta 3 trục">
+            <span>📈</span>
+            <span>ĐỒ THỊ ĐỘNG HỌC MATLAB DELTA (THETA 1..3)</span>
+          </button>
+
+          <div class="joint-jogger-group">
+            <!-- Motor 1 -->
+            <div class="joint-control-item">
+              <div class="joint-meta">
+                <span class="joint-label"><span class="axis-name">M1</span> Servo Arm 1 (0°)</span>
+                <span class="val-deg" id="val-delta-m1-deg">25.0°</span>
+              </div>
+              <input type="range" class="joint-slider delta-slider" id="slider-delta-m1" min="-20" max="65" step="0.5" value="25">
+            </div>
+
+            <!-- Motor 2 -->
+            <div class="joint-control-item">
+              <div class="joint-meta">
+                <span class="joint-label"><span class="axis-name">M2</span> Servo Arm 2 (120°)</span>
+                <span class="val-deg" id="val-delta-m2-deg">25.0°</span>
+              </div>
+              <input type="range" class="joint-slider delta-slider" id="slider-delta-m2" min="-20" max="65" step="0.5" value="25">
+            </div>
+
+            <!-- Motor 3 -->
+            <div class="joint-control-item">
+              <div class="joint-meta">
+                <span class="joint-label"><span class="axis-name">M3</span> Servo Arm 3 (240°)</span>
+                <span class="val-deg" id="val-delta-m3-deg">25.0°</span>
+              </div>
+              <input type="range" class="joint-slider delta-slider" id="slider-delta-m3" min="-20" max="65" step="0.5" value="25">
+            </div>
+
+            <!-- Yaw (Theta 4) -->
+            <div class="joint-control-item">
+              <div class="joint-meta">
+                <span class="joint-label"><span class="axis-name">YAW</span> 4th Axis Suction</span>
+                <span class="val-deg" id="val-delta-yaw-deg">0.0°</span>
+              </div>
+              <input type="range" class="joint-slider delta-slider" id="slider-delta-yaw" min="-180" max="180" step="1" value="0">
+            </div>
+          </div>
+
+          <!-- Delta Cartesian Readout -->
+          <div class="cartesian-box">
+            <div class="coord-item">
+              <span class="coord-label">EE X (m)</span>
+              <span class="coord-val" id="delta-tcp-x">1.200</span>
+            </div>
+            <div class="coord-item">
+              <span class="coord-label">EE Y (m)</span>
+              <span class="coord-val" id="delta-tcp-y">1.340</span>
+            </div>
+            <div class="coord-item">
+              <span class="coord-label">EE Z (m)</span>
+              <span class="coord-val" id="delta-tcp-z">-0.100</span>
+            </div>
+          </div>
+
+          <!-- Delta Presets -->
+          <div class="preset-bar">
+            <button class="preset-btn" id="btn-delta-home">Delta Home</button>
+            <button class="preset-btn" id="btn-delta-pick1">Pick Belt 1</button>
+            <button class="preset-btn" id="btn-delta-collate">Collate Belt 2</button>
+          </div>
+
+          <!-- Quick Delta Pendant & Auto Cycle Triggers -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px;">
+            <button class="preset-btn" id="btn-open-delta-pendant" style="background:#0284c7; color:#fff; border-color:#38bdf8; font-weight:700; padding:6px 4px; font-size:11px;" title="Mở bộ lập trình dạy điểm Teach Pendant cho Robot Delta 3-DOF">
+              📱 DELTA PENDANT
+            </button>
+            <button class="preset-btn" id="btn-run-delta-auto" style="background:#059669; color:#fff; border-color:#34d399; font-weight:700; padding:6px 4px; font-size:11px;" title="Khởi động chu trình tự động Gate Trajectory (Π-Curve)">
+              ⚡ CHẠY AUTO (Π)
+            </button>
+          </div>
+        </section>
+
+        <!-- 4. Sensor & IO Telemetry Card -->
+        <section class="scada-card">
+          <div class="card-title">
+            <span>SENSORS & IO TELEMETRY</span>
+            <span class="card-tag">DIGITAL_IO</span>
+          </div>
+
+          <div class="io-grid">
+            <div class="io-item">
+              <div class="io-meta">
+                <span class="io-name">DI_01</span>
+                <span class="io-label" id="label-di01">Fence Gate Closed</span>
+              </div>
+              <span class="scada-led led-green active" id="led-di01"></span>
+            </div>
+
+            <div class="io-item">
+              <div class="io-meta">
+                <span class="io-name">DO_STOPPER</span>
+                <span class="io-label" id="label-stopper-cylinder">ĐÓNG CHỐT</span>
+              </div>
+              <span class="scada-led led-gray" id="led-stopper-cylinder" title="DO_STOPPER_CYLINDER: Xanh khi mở chốt, Xám khi đóng chốt"></span>
+            </div>
+
+            <div class="io-item">
+              <div class="io-meta">
+                <span class="io-name">DO_REJECT</span>
+                <span class="io-label" id="label-do-reject">CHỜ PHẾ PHẨM</span>
+              </div>
+              <span class="scada-led led-gray" id="led-do-reject" title="DO_REJECT_CYLINDER: Đỏ khi phóng gạt phế phẩm, Xám khi lùi"></span>
+            </div>
+
+            <div class="io-item">
+              <div class="io-meta">
+                <span class="io-name">DO_SEALER</span>
+                <span class="io-label" id="label-do-sealer">CHỜ THÙNG</span>
+              </div>
+              <span class="scada-led led-gray" id="led-do-sealer" title="DO_SEALER_ACTIVE: Xanh khi máy đang dán băng dính, Xám khi chờ"></span>
+            </div>
+
+            <div class="io-item">
+              <div class="io-meta">
+                <span class="io-name">DI_10</span>
+                <span class="io-label">Cognex Trigger</span>
+              </div>
+              <span class="scada-led led-green active"></span>
+            </div>
+
+            <div class="io-item">
+              <div class="io-meta">
+                <span class="io-name">DI_SEALER</span>
+                <span class="io-label" id="label-di-sealer">Cảm biến Dán nắp</span>
+              </div>
+              <span class="scada-led led-gray" id="led-di-sealer" title="DI_SEALER_SENSOR: Đỏ khi thùng cắt tia, Xanh khi thông thoáng"></span>
+            </div>
+
+            <div class="io-item">
+              <div class="io-meta">
+                <span class="io-name">DI_11</span>
+                <span class="io-label">Collation Detect</span>
+              </div>
+              <span class="scada-led led-red" id="led-di11"></span>
+            </div>
+
+            <div class="io-item">
+              <div class="io-meta">
+                <span class="io-name">DI_12</span>
+                <span class="io-label">Box Stopper Sens</span>
+              </div>
+              <span class="scada-led led-yellow" id="led-di12"></span>
+            </div>
+
+            <div class="io-item">
+              <div class="io-meta">
+                <span class="io-name">DI_PRINT_TRIGGER</span>
+                <span class="io-label" id="label-di-print-trigger">Cảm biến Trạm In</span>
+              </div>
+              <span class="scada-led led-green" id="led-di-print-trigger" title="DI_PRINT_TRIGGER: Đỏ khi phát hiện thùng đến trạm in phun, Xanh khi chờ"></span>
+            </div>
+
+            <div class="io-item">
+              <div class="io-meta">
+                <span class="io-name">DO_INKJET_FIRE</span>
+                <span class="io-label" id="label-do-inkjet-fire">CHỜ BẮN MỰC</span>
+              </div>
+              <span class="scada-led led-gray" id="led-do-inkjet-fire" title="DO_INKJET_FIRE: Xanh Cyan khi đầu in CIJ đang bắn mực ma trận chấm"></span>
+            </div>
+
+            <div class="io-item">
+              <div class="io-meta">
+                <span class="io-name">DI_BARCODE_OK</span>
+                <span class="io-label" id="label-di-barcode-ok">CHỜ QUÉT MÃ</span>
+              </div>
+              <span class="scada-led led-gray" id="led-di-barcode-ok" title="DI_BARCODE_OK: Xanh lá khi quét xác thực Barcode hợp lệ"></span>
+            </div>
+          </div>
+
+          <!-- QC & Packaging Telemetry Metrics Summary -->
+          <div style="margin-top: 10px; padding: 8px 10px; background: rgba(15, 23, 42, 0.75); border: 1px solid #334155; border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 4px;">
+              <span style="color: #94a3b8; font-weight: 600;">TỔNG KIỂM TRA (INSPECTED):</span>
+              <span id="val-inspected-card" style="font-family: var(--font-mono); font-weight: 700; color: var(--scada-cyan);">0</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 4px;">
+              <span style="color: #94a3b8; font-weight: 600;">PHẾ PHẨM LOẠI BỎ (DEFECT NG):</span>
+              <span id="val-ng-card" style="font-family: var(--font-mono); font-weight: 700; color: #ef4444;">0</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 4px;">
+              <span style="color: #94a3b8; font-weight: 600;">THÙNG HOÀN THIỆN (SEALED BOXES):</span>
+              <span id="val-sealed-card" style="font-family: var(--font-mono); font-weight: 700; color: #f59e0b;">0</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px;">
+              <span style="color: #94a3b8; font-weight: 600;">THÙNG ĐẠT CHUẨN (VERIFIED BOXES):</span>
+              <span id="val-verified-boxes" style="font-family: var(--font-mono); font-weight: 700; color: #4ade80;">0</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. Widget Giám sát Trục & Tốc độ Băng tải (Conveyor & Encoder Monitor) -->
+        <section class="scada-card" style="border-left: 3px solid #38bdf8;">
+          <div class="card-title">
+            <span>CONVEYOR & ENCODER MONITOR</span>
+            <span class="card-tag" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8;">HSC_TRACKING</span>
+          </div>
+          <div style="padding: 8px 10px; background: rgba(15, 23, 42, 0.82); border: 1px solid #334155; border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 6px;">
+              <span style="color: #cbd5e1; font-weight: 600;">Encoder Pulses (HSC):</span>
+              <span id="val-encoder-pulses" style="font-family: var(--font-mono); font-weight: 800; color: #38bdf8; font-size: 12px;">0 pls</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 6px;">
+              <span style="color: #cbd5e1; font-weight: 600;">Line Speed (Vận tốc):</span>
+              <span id="val-line-speed-mms" style="font-family: var(--font-mono); font-weight: 800; color: #facc15; font-size: 12px;">0.0 mm/s</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; margin-bottom: 6px; padding-top: 4px; border-top: 1px dashed #334155;">
+              <span style="color: #94a3b8;">Base Pulse / ΔPulse:</span>
+              <span id="val-encoder-base-delta" style="font-family: var(--font-mono); color: #e2e8f0;">0 / +0 pls</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px;">
+              <span style="color: #94a3b8;">Quadrature A/B & Freq:</span>
+              <span style="display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); color: #94a3b8;">
+                <span class="scada-led led-green" id="led-enc-ch-a" title="Encoder Channel A"></span>A
+                <span class="scada-led led-cyan" id="led-enc-ch-b" title="Encoder Channel B"></span>B
+                <span id="val-encoder-freq" style="color: #38bdf8; font-weight: 700;">0 Hz</span>
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. Widget Thông tin Truy xuất Nguồn gốc (Traceability Panel) -->
+        <section class="scada-card" style="border-left: 3px solid #22c55e;">
+          <div class="card-title">
+            <span>TRACEABILITY & BARCODE PANEL</span>
+            <span class="card-tag" style="background: rgba(34, 197, 94, 0.2); color: #4ade80;">CIJ_SCANNER</span>
+          </div>
+          <div style="padding: 9px 10px; background: rgba(15, 23, 42, 0.88); border: 1px solid #334155; border-radius: 6px; font-family: var(--font-mono);">
+            <div style="font-size: 9.5px; color: #94a3b8; margin-bottom: 4px; letter-spacing: 0.5px;">LAST PRINTED BOX INFO (THÙNG VỪA XUẤT XƯỞNG):</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; margin-bottom: 6px;">
+              <span style="color: #cbd5e1;">Mã thùng (Box ID):</span>
+              <span id="val-trace-box-id" style="font-weight: 800; color: #facc15; background: rgba(250, 204, 21, 0.12); padding: 1px 6px; border-radius: 4px;">BOX-2026-0041</span>
+            </div>
+            <div style="background: #090d16; border: 1px solid #1e293b; border-radius: 4px; padding: 6px 8px; margin-bottom: 7px; font-size: 10.5px; line-height: 1.45; color: #e2e8f0;" id="val-trace-print-content">
+              <div>MFG: <span id="val-trace-mfg" style="color:#38bdf8;">2026-11-07</span></div>
+              <div>EXP: <span id="val-trace-exp" style="color:#38bdf8;">2027-11-07</span></div>
+              <div>LOT: <span id="val-trace-lot" style="color:#f59e0b;">#LOT-2026A</span></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+              <span style="color: #cbd5e1;">Barcode Scan:</span>
+              <span id="val-trace-barcode-status" style="font-weight: 800; color: #4ade80; background: rgba(34, 197, 94, 0.18); border: 1px solid #22c55e; padding: 2px 8px; border-radius: 4px;">VERIFIED [OK]</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. Widget Giám sát Chỉ số OEE Thời Gian Thực & Quản Trị Chất Lượng (OEE & ANALYTICS) -->
+        <section class="scada-card oee-dashboard-card" style="border-left: 3px solid #22c55e;">
+          <div class="card-title">
+            <span>OEE & SMART QUALITY ANALYTICS</span>
+            <span class="card-tag" style="background: rgba(34, 197, 94, 0.2); color: #4ade80;">ISO_22400</span>
+          </div>
+
+          <!-- Central Radial Gauge / Donut Chart & Benchmark Status -->
+          <div class="oee-donut-row">
+            <div class="oee-donut-wrap">
+              <svg width="124" height="124" viewBox="0 0 124 124" class="oee-donut-svg">
+                <circle cx="62" cy="62" r="52" fill="none" stroke="#1e293b" stroke-width="11"></circle>
+                <circle id="oee-widget-donut-ring" cx="62" cy="62" r="52" fill="none" stroke="#22c55e" stroke-width="11" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="0" transform="rotate(-90 62 62)" style="transition: stroke-dashoffset 0.45s ease, stroke 0.3s ease;"></circle>
+              </svg>
+              <div class="oee-donut-center">
+                <span class="oee-donut-label">OEE</span>
+                <span class="oee-donut-value" id="oee-widget-donut-val">100.0%</span>
+              </div>
+            </div>
+
+            <div class="oee-donut-meta">
+              <div class="oee-tier-title">BENCHMARK RATING:</div>
+              <div class="oee-tier-name" id="oee-widget-tier-text">WORLD CLASS</div>
+              <span class="oee-benchmark-badge" id="oee-widget-benchmark-badge">World Class</span>
+              <div class="oee-planned-row">
+                <span>Planned Time:</span>
+                <b id="oee-widget-planned-time">00:00:00</b>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3 Horizontal Progress Bars (A, P, Q) -->
+          <div class="oee-bars-group">
+            <!-- 1. Availability -->
+            <div class="oee-metric-item">
+              <div class="oee-metric-header">
+                <span class="oee-metric-name">1. Availability (A):</span>
+                <span class="oee-metric-val" id="oee-widget-avail-val">100.0%</span>
+              </div>
+              <div class="oee-progress-track">
+                <div class="oee-progress-fill" id="oee-widget-avail-bar" style="width: 100%; background: #22c55e;"></div>
+              </div>
+              <div class="oee-metric-sub" id="oee-widget-avail-sub">
+                Run Time: <b style="color:#4ade80;">00:00:00</b> | Downtime: <b style="color:#94a3b8;">00:00:00</b>
+              </div>
+            </div>
+
+            <!-- 2. Performance -->
+            <div class="oee-metric-item">
+              <div class="oee-metric-header">
+                <span class="oee-metric-name">2. Performance (P):</span>
+                <span class="oee-metric-val" id="oee-widget-perf-val">100.0%</span>
+              </div>
+              <div class="oee-progress-track">
+                <div class="oee-progress-fill" id="oee-widget-perf-bar" style="width: 100%; background: #22c55e;"></div>
+              </div>
+              <div class="oee-metric-sub" id="oee-widget-perf-sub">
+                Actual Speed: <b style="color:#38bdf8;">0 pcs/min</b> <span style="color:#64748b;">(Target: 60 pcs/min)</span>
+              </div>
+            </div>
+
+            <!-- 3. Quality -->
+            <div class="oee-metric-item">
+              <div class="oee-metric-header">
+                <span class="oee-metric-name">3. Quality (Q):</span>
+                <span class="oee-metric-val" id="oee-widget-qual-val">100.0%</span>
+              </div>
+              <div class="oee-progress-track">
+                <div class="oee-progress-fill" id="oee-widget-qual-bar" style="width: 100%; background: #22c55e;"></div>
+              </div>
+              <div class="oee-metric-sub" id="oee-widget-qual-sub">
+                OK: <b style="color:#4ade80;">0</b> / NG: <b style="color:#ef4444;">0</b> <span style="color:#64748b;">(Inspected: 0)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Batch & Event Log (Nhật ký Lô hàng & Sự kiện) -->
+          <div class="oee-log-section">
+            <div class="oee-log-header">
+              <span>📋 NHẬT KÝ LÔ HÀNG & SỰ KIỆN (BATCH & EVENT LOG)</span>
+            </div>
+            <div class="oee-event-log-box" id="oee-widget-event-log"></div>
+          </div>
+
+          <!-- Shift Reset Button -->
+          <button class="action-btn oee-reset-btn" id="btn-reset-oee-widget" title="Xóa toàn bộ bộ đếm và thời gian về 0 để bắt đầu ca sản xuất mới">
+            🔄 Reset Shift / Clear OEE Data
+          </button>
+        </section>
+
+        <!-- 8. Thẻ Giám Sát Đội Xe AGV & Logistics Cuối Chuyền (AGV Fleet Monitor) -->
+        <section class="scada-card" style="border-left: 3px solid #eab308;">
+          <div class="card-title">
+            <span>AGV FLEET & WAREHOUSE MONITOR</span>
+            <span class="card-tag" style="background: rgba(234, 179, 8, 0.2); color: #facc15;">AMR_LOGISTICS</span>
+          </div>
+
+          <div style="padding: 9px 10px; background: rgba(15, 23, 42, 0.88); border: 1px solid #334155; border-radius: 6px; font-family: var(--font-mono);">
+            <!-- Trạng thái hiện tại -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 10.5px; color: #cbd5e1; display: flex; align-items: center; gap: 6px;">
+                <span class="scada-led led-green active" id="led-agv-status"></span>
+                <span>AGV State:</span>
+              </span>
+              <span id="val-agv-status" style="font-size: 10.5px; font-weight: 800; color: #22c55e; background: rgba(34, 197, 94, 0.18); border: 1px solid #22c55e; padding: 2px 8px; border-radius: 4px;">LOADING [Chờ hàng]</span>
+            </div>
+
+            <!-- Cấu hình Lô hàng AGV_CAPACITY (10 - 20 thùng) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 10.5px;">
+              <span style="color: #94a3b8;">Batch Capacity (Cỡ lô):</span>
+              <select id="select-agv-capacity" style="background: #090d16; color: #facc15; border: 1px solid #475569; border-radius: 4px; padding: 2px 6px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;">
+                <option value="10">10 thùng / chuyến</option>
+                <option value="12" selected>12 thùng (Chuẩn 3x2x2)</option>
+                <option value="16">16 thùng (Pallet 4x2x2)</option>
+                <option value="20">20 thùng (Max Load)</option>
+              </select>
+            </div>
+
+            <!-- Tải trọng thùng & Thanh tiến trình động -->
+            <div style="margin-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 4px;">
+                <span style="color: #cbd5e1;">AGV Payload:</span>
+                <span id="val-agv-payload" style="font-weight: 800; color: #38bdf8;">0 / 12 thùng (0%)</span>
+              </div>
+              <div class="oee-progress-track">
+                <div class="oee-progress-fill" id="bar-agv-payload" style="width: 0%; background: #22c55e;"></div>
+              </div>
+            </div>
+
+            <!-- Bộ đếm chuyến, Tổng lưu kho & Tình trạng Pin -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding-top: 6px; border-top: 1px dashed #334155; font-size: 9.8px; text-align: center;">
+              <div style="background: #090d16; padding: 4px; border-radius: 4px; border: 1px solid #1e293b;">
+                <div style="color: #64748b; font-size: 8.5px;">TRIPS</div>
+                <div id="val-agv-trips" style="color: #facc15; font-weight: 800; margin-top: 2px;">0 chuyến</div>
+              </div>
+              <div style="background: #090d16; padding: 4px; border-radius: 4px; border: 1px solid #1e293b;">
+                <div style="color: #64748b; font-size: 8.5px;">WAREHOUSE</div>
+                <div id="val-warehouse-stored" style="color: #38bdf8; font-weight: 800; margin-top: 2px;">0 thùng</div>
+              </div>
+              <div style="background: #090d16; padding: 4px; border-radius: 4px; border: 1px solid #1e293b;">
+                <div style="color: #64748b; font-size: 8.5px;">BATTERY</div>
+                <div id="val-agv-battery" style="color: #4ade80; font-weight: 800; margin-top: 2px;">98%</div>
+              </div>
+            </div>
+
+            <!-- Nút điều khiển thủ công (Manual Dispatch & Quick Load) -->
+            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 6px; margin-top: 9px;">
+              <button class="action-btn" id="btn-agv-load-box" style="background: #1e293b; border-color: #38bdf8; color: #38bdf8; font-weight: 700; height: 32px; font-size: 10px;" title="Nạp nhanh 1 thùng carton thành phẩm lên Pallet AGV để kiểm thử ma trận xếp hàng">
+                📦 +1 THÙNG LÊN XE
+              </button>
+              <button class="action-btn" id="btn-agv-force-dispatch" style="background: linear-gradient(135deg, #ca8a04, #eab308); border-color: #fde047; color: #090d16; font-weight: 900; height: 32px; font-size: 10px;" title="Cưỡng bức xe AGV chở hàng đi giao vào Kho ảo ngay lập tức mà không cần chờ đủ 12 thùng">
+                🚜 CHO XE ĐI NGAY (FORCE DISPATCH)
+              </button>
+            </div>
+          </div>
+        </section>
+
+        </div><!-- End Tab 1: tab-pane-jogger -->
+
+        <!-- ================================================================
+             TAB 2: KINEMATICS & TRAJECTORY LAB (GIAI ĐOẠN 2)
+             ================================================================ -->
+        <div id="tab-pane-kinematics" class="tab-pane">
+
+          <!-- 1. Single Pick & Place Automation Test Card -->
+          <section class="scada-card" style="border-left: 3px solid var(--scada-cyan);">
+            <div class="card-title">
+              <span style="color: #fff; font-weight: 800;">SINGLE PICK & PLACE TEST CYCLE</span>
+              <span class="card-tag" style="background: rgba(6, 182, 212, 0.2); color: var(--scada-cyan);">AUTO_CYCLE</span>
+            </div>
+
+            <!-- Prominent Test Button -->
+            <button class="btn-cycle-master" id="btn-test-single-cycle">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <span>Test Single Pick & Place Cycle</span>
+            </button>
+
+            <!-- Cycle Status Banner -->
+            <div class="lab-status-badge">
+              <span>TRẠNG THÁI CHU TRÌNH:</span>
+              <span class="badge-val" id="cycle-status-text">SẴN SÀNG (STANDBY)</span>
+            </div>
+
+            <!-- 3D Trajectory Trails Toggle -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+              <label class="checkbox-row" style="margin: 0;">
+                <input type="checkbox" id="chk-show-trails">
+                <span>Vẽ quỹ đạo 3D (Trail Cyan / Amber)</span>
+              </label>
+              <button class="action-btn" id="btn-clear-trails" style="padding: 2px 8px; font-size: 10px;">Xóa Vết</button>
+            </div>
+
+            <!-- MATLAB Kinematics Plotter Button -->
+            <button class="action-btn" id="btn-open-matlab-plotter" style="width: 100%; margin-top: 12px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-color: #60a5fa; color: #fff; font-weight: 700; height: 36px; display: flex; align-items: center; justify-content: center; gap: 8px;" title="Mở Đồ Thị Động Học Kiểu MATLAB (Theta, Vận Tốc, Gia Tốc)">
+              <span style="font-size: 15px;">📈</span>
+              <span>MỞ ĐỒ THỊ MATLAB (THETA, VẬN TỐC, GIA TỐC)</span>
+            </button>
+          </section>
+
+          <!-- 2. Real-Time Homogeneous Transformation Matrix T0_6 Card -->
+          <section class="scada-card">
+            <div class="card-title">
+              <span>MA TRẬN ĐỒNG NHẤT 4x4 (T0_6 - FK)</span>
+              <span class="card-tag">DENAVIT_HARTENBERG</span>
+            </div>
+            <div style="font-size: 10.5px; color: var(--text-muted); margin-bottom: 6px;">
+              Cập nhật thời gian thực khi Robot Arm 6 bậc di chuyển:
+            </div>
+
+            <div class="matrix-container">
+              <div class="matrix-header-row">
+                <span>Véc-tơ n</span>
+                <span>Véc-tơ o</span>
+                <span>Véc-tơ a</span>
+                <span style="color: var(--scada-cyan);">Vị trí P (mm)</span>
+              </div>
+              <div class="matrix-grid">
+                <div class="matrix-cell" id="mat-0-0">1.0000</div>
+                <div class="matrix-cell" id="mat-0-1">0.0000</div>
+                <div class="matrix-cell" id="mat-0-2">0.0000</div>
+                <div class="matrix-cell col-p" id="mat-0-3">-1200.0</div>
+
+                <div class="matrix-cell" id="mat-1-0">0.0000</div>
+                <div class="matrix-cell" id="mat-1-1">1.0000</div>
+                <div class="matrix-cell" id="mat-1-2">0.0000</div>
+                <div class="matrix-cell col-p" id="mat-1-3">910.0</div>
+
+                <div class="matrix-cell" id="mat-2-0">0.0000</div>
+                <div class="matrix-cell" id="mat-2-1">0.0000</div>
+                <div class="matrix-cell" id="mat-2-2">1.0000</div>
+                <div class="matrix-cell col-p" id="mat-2-3">150.0</div>
+
+                <div class="matrix-cell row-bottom">0.0000</div>
+                <div class="matrix-cell row-bottom">0.0000</div>
+                <div class="matrix-cell row-bottom">0.0000</div>
+                <div class="matrix-cell row-bottom">1.0000</div>
+              </div>
+            </div>
+
+            <!-- Orientation Readout in Deg & Yaskawa Pulses -->
+            <div class="cartesian-box" style="margin-top: 8px;">
+              <div class="coord-item">
+                <span class="coord-label">Rx (deg)</span>
+                <span class="coord-val" id="lab-euler-rx">0.0°</span>
+              </div>
+              <div class="coord-item">
+                <span class="coord-label">Ry (deg)</span>
+                <span class="coord-val" id="lab-euler-ry">0.0°</span>
+              </div>
+              <div class="coord-item">
+                <span class="coord-label">Rz (deg)</span>
+                <span class="coord-val" id="lab-euler-rz">0.0°</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 3. Trajectory Planner & Cartesian Motion Test Card (MOVJ / MOVL) -->
+          <section class="scada-card" style="border-left: 3px solid var(--scada-yellow);">
+            <div class="card-title">
+              <span style="color: #fff; font-weight: 800;">TRAJECTORY PLANNER (MOVJ / MOVL)</span>
+              <span class="card-tag">POLYNOMIAL_ENGINE</span>
+            </div>
+
+            <!-- Robot Selector -->
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <div style="flex: 1;">
+                <label style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); display: block; margin-bottom: 3px;">ROBOT:</label>
+                <select id="lab-robot-select" style="width: 100%; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 4px; padding: 5px 8px; font-family: var(--font-mono); font-size: 11px;">
+                  <option value="arm">Robot Arm 6 Bậc (Yaskawa)</option>
+                  <option value="delta">Robot Delta 4 Bậc (Gantry)</option>
+                </select>
+              </div>
+              <div style="flex: 1;">
+                <label style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); display: block; margin-bottom: 3px;">TIME SCALING:</label>
+                <select id="lab-poly-degree" style="width: 100%; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 4px; padding: 5px 8px; font-family: var(--font-mono); font-size: 11px;">
+                  <option value="5">Quintic (Bậc 5 - C2 Mượt)</option>
+                  <option value="3">Cubic (Bậc 3)</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 8px;">
+              <label style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted);">THỜI GIAN THỰC THI (GIÂY):</label>
+              <input id="lab-motion-duration" type="number" min="0.5" max="8.0" step="0.5" value="2.0" style="width: 100%; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 4px; padding: 5px 8px; font-family: var(--font-mono); font-size: 11px; margin-top: 3px;">
+            </div>
+
+            <!-- Cartesian Coordinate Target Inputs -->
+            <div style="font-size: 10.5px; font-weight: 700; color: #fff; margin-top: 8px;">TỌA ĐỘ MỤC TIÊU (WORLD COORDINATES):</div>
+            <div class="lab-inputs-row">
+              <div class="lab-input-item">
+                <label>X (m)</label>
+                <input type="number" id="lab-target-x" step="0.05" value="-1.25">
+              </div>
+              <div class="lab-input-item">
+                <label>Y (m)</label>
+                <input type="number" id="lab-target-y" step="0.05" value="1.15">
+              </div>
+              <div class="lab-input-item">
+                <label>Z (m)</label>
+                <input type="number" id="lab-target-z" step="0.05" value="0.18">
+              </div>
+            </div>
+            <div class="lab-inputs-row">
+              <div class="lab-input-item">
+                <label>Rx (°)</label>
+                <input type="number" id="lab-target-rx" step="5" value="0">
+              </div>
+              <div class="lab-input-item">
+                <label>Ry (°)</label>
+                <input type="number" id="lab-target-ry" step="5" value="0">
+              </div>
+              <div class="lab-input-item">
+                <label>Rz (°)</label>
+                <input type="number" id="lab-target-rz" step="5" value="0">
+              </div>
+            </div>
+
+            <!-- Quick Position Presets -->
+            <div style="margin-top: 10px;">
+              <span style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted);">VỊ TRÍ MẪU NHANH:</span>
+              <div class="preset-bar" style="margin-top: 4px;">
+                <button class="preset-btn" id="btn-lab-pos-pick">Pick Belt 2</button>
+                <button class="preset-btn" id="btn-lab-pos-box">Box Place</button>
+                <button class="preset-btn" id="btn-lab-pos-overhead">Overhead</button>
+                <button class="preset-btn" id="btn-lab-pos-home">Home</button>
+              </div>
+            </div>
+
+            <!-- Motion Command Buttons -->
+            <div class="motion-btn-grid">
+              <button class="btn-motion-exec btn-movj" id="btn-exec-movj" title="Nội suy đồng thời trong không gian khớp">
+                ▶ MOVJ
+              </button>
+              <button class="btn-motion-exec btn-movl" id="btn-exec-movl" title="Nội suy đường thẳng tuyệt đối trong không gian Descartes">
+                ▶ MOVL
+              </button>
+              <button class="btn-motion-exec btn-stop-motion" id="btn-stop-traj">
+                ⏹ STOP
+              </button>
+            </div>
+
+            <!-- IK Solver Result / Feedback Banner -->
+            <div class="lab-status-badge" style="margin-top: 10px;">
+              <span>KẾT QUẢ IK:</span>
+              <span class="badge-val" id="lab-ik-feedback">SẴN SÀNG</span>
+            </div>
+          </section>
+
+          <!-- 4. Physics, Vision & Gripper Engine Card -->
+          <section class="scada-card">
+            <div class="card-title">
+              <span>PHYSICS, SENSORS & VACUUM STATUS</span>
+              <span class="card-tag">IO_MONITOR</span>
+            </div>
+
+            <div class="io-grid">
+              <div class="io-item">
+                <div class="io-meta">
+                  <span class="io-name">DELTA VACUUM</span>
+                  <span class="io-label" id="label-delta-vac-kpa">-85 kPa</span>
+                </div>
+                <span class="scada-led led-green" id="led-delta-vacuum"></span>
+              </div>
+
+              <div class="io-item">
+                <div class="io-meta">
+                  <span class="io-name">ARM VACUUM</span>
+                  <span class="io-label" id="label-arm-vac-kpa">-90 kPa</span>
+                </div>
+                <span class="scada-led led-green" id="led-arm-vacuum"></span>
+              </div>
+
+              <div class="io-item">
+                <div class="io-meta">
+                  <span class="io-name">VISION QUEUE</span>
+                  <span class="io-label" id="label-vision-queue-count">0 Vật thể</span>
+                </div>
+                <span class="scada-led led-green active"></span>
+              </div>
+
+              <div class="io-item">
+                <div class="io-meta">
+                  <span class="io-name">CARTON BOX</span>
+                  <span class="io-label" id="label-box-layers">Lớp: 0 / 2</span>
+                </div>
+                <span class="scada-led led-cyan" id="led-box-layers"></span>
+              </div>
+
+              <div class="io-item">
+                <div class="io-meta">
+                  <span class="io-name">DO_STOPPER</span>
+                  <span class="io-label" id="label-kin-stopper">ĐÓNG CHỐT</span>
+                </div>
+                <span class="scada-led led-gray" id="led-kin-stopper"></span>
+              </div>
+
+              <div class="io-item">
+                <div class="io-meta">
+                  <span class="io-name">DO_REJECT</span>
+                  <span class="io-label" id="label-kin-reject">CHỜ PHẾ PHẨM</span>
+                </div>
+                <span class="scada-led led-gray" id="led-kin-reject"></span>
+              </div>
+
+              <div class="io-item">
+                <div class="io-meta">
+                  <span class="io-name">DO_SEALER</span>
+                  <span class="io-label" id="label-kin-sealer">CHỜ DÁN NẮP</span>
+                </div>
+                <span class="scada-led led-gray" id="led-kin-sealer"></span>
+              </div>
+            </div>
+          </section>
+
+        </div><!-- End Tab 2: tab-pane-kinematics -->
+
+        <!-- ==========================================================================
+             TAB 3: YASKAWA CONTROL PANEL & I/O BOX (PHASE 3)
+             ========================================================================== -->
+        <div class="tab-pane" id="tab-pane-control-panel">
+          <!-- Emergency Stop & Master Push Buttons -->
+          <section class="dock-section">
+            <div class="section-title">
+              <span>YASKAWA CONTROL PANEL</span>
+              <span class="badge" id="ctrl-panel-status">READY</span>
+            </div>
+
+            <!-- Emergency Stop Mushroom Button (Twist to release) -->
+            <div style="text-align: center; margin: 8px 0 14px 0;">
+              <div class="estop-container" id="ctrl-estop" title="Click to ENGAGE / TWIST TO RELEASE Emergency Stop">
+                <div class="estop-mushroom">
+                  <span>EMERGENCY</span>
+                  <span>STOP</span>
+                </div>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 8.5px; color: var(--text-dim); margin-top: 5px;">
+                TWIST TO RESET • HARDWARE SAFETY E-STOP
+              </div>
+            </div>
+
+            <!-- Industrial Round Push Buttons with Chrome Bezels -->
+            <div class="industrial-buttons-row">
+              <div class="push-btn-item">
+                <div class="push-btn-bezel">
+                  <button class="push-btn-actuator btn-start" id="btn-ctrl-start" title="START (DI_00)">START</button>
+                </div>
+                <span class="push-btn-label">DI_00</span>
+              </div>
+
+              <div class="push-btn-item">
+                <div class="push-btn-bezel">
+                  <button class="push-btn-actuator btn-stop" id="btn-ctrl-stop" title="STOP (DI_01)">STOP</button>
+                </div>
+                <span class="push-btn-label">DI_01</span>
+              </div>
+
+              <div class="push-btn-item">
+                <div class="push-btn-bezel">
+                  <button class="push-btn-actuator btn-yellow" id="btn-ctrl-servoon" title="SERVO ON (DI_02)">SERVO</button>
+                </div>
+                <span class="push-btn-label">DI_02</span>
+              </div>
+
+              <div class="push-btn-item">
+                <div class="push-btn-bezel">
+                  <button class="push-btn-actuator btn-yellow" id="btn-ctrl-roboton" title="ROBOT ON (DI_03)">ROBOT</button>
+                </div>
+                <span class="push-btn-label">DI_03</span>
+              </div>
+            </div>
+
+            <!-- 3-Position Key Switch (TEACH / PLAY / REMOTE) -->
+            <div class="mode-switch-box">
+              <div class="mode-switch-labels">
+                <span id="lbl-mode-teach">TEACH (0)</span>
+                <span id="lbl-mode-play">PLAY (1)</span>
+                <span id="lbl-mode-remote" class="active">REMOTE (2)</span>
+              </div>
+              <div class="mode-selector-track">
+                <button class="mode-option-btn" id="btn-mode-teach" data-mode="0">TEACH</button>
+                <button class="mode-option-btn" id="btn-mode-play" data-mode="1">PLAY</button>
+                <button class="mode-option-btn active" id="btn-mode-remote" data-mode="2">REMOTE</button>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 8px; color: var(--text-dim); margin-top: 6px;">
+                * YRC1000micro chỉ chấp nhận lệnh Ethernet khi công tắc ở chế độ REMOTE
+              </div>
+            </div>
+
+            <!-- Built-in Default PLC Automation Logic -->
+            <div style="background: #090d16; border: 1px solid #1e293b; border-radius: 6px; padding: 8px 10px; margin-top: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: #e2e8f0;">BUILT-IN PLC LOGIC (MP3300)</span>
+                <span class="badge badge-success" id="plc-state-badge">IDLE</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                <span style="font-size: 9px; color: var(--text-muted);">Tự động phối hợp Băng tải & Robot:</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-builtin-plc" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <!-- Control Panel 8 Metal Toggle Switches & Pilot Lamps (DI_16..23 / DO_16..23) -->
+          <section class="dock-section">
+            <div class="section-title">
+              <span>CONTROL PANEL SWITCHES & LAMPS</span>
+              <span class="badge">IW00C81 / OW00C81</span>
+            </div>
+
+            <!-- 8 Toggle Switches I0..I7 (DI_16..DI_23) with Blue Jacks -->
+            <div style="margin-top: 6px;">
+              <div style="font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); display: flex; justify-content: space-between;">
+                <span>INPUTS I0..I7 (DI_16..DI_23)</span>
+                <span style="color: #60a5fa;">JACK XANH</span>
+              </div>
+              <div class="switches-bank-row" id="cp-switches-bank">
+                <div class="switch-unit"><span class="switch-label">I0</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="16" id="sw-cp-0"><div class="metal-lever"></div></div><span class="switch-label">DI16</span></div>
+                <div class="switch-unit"><span class="switch-label">I1</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="17" id="sw-cp-1"><div class="metal-lever"></div></div><span class="switch-label">DI17</span></div>
+                <div class="switch-unit"><span class="switch-label">I2</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="18" id="sw-cp-2"><div class="metal-lever"></div></div><span class="switch-label">DI18</span></div>
+                <div class="switch-unit"><span class="switch-label">I3</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="19" id="sw-cp-3"><div class="metal-lever"></div></div><span class="switch-label">DI19</span></div>
+                <div class="switch-unit"><span class="switch-label">I4</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="20" id="sw-cp-4"><div class="metal-lever"></div></div><span class="switch-label">IN#5</span></div>
+                <div class="switch-unit"><span class="switch-label">I5</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="21" id="sw-cp-5"><div class="metal-lever"></div></div><span class="switch-label">IN#6</span></div>
+                <div class="switch-unit"><span class="switch-label">I6</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="22" id="sw-cp-6"><div class="metal-lever"></div></div><span class="switch-label">IN#7</span></div>
+                <div class="switch-unit"><span class="switch-label">I7</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="23" id="sw-cp-7"><div class="metal-lever"></div></div><span class="switch-label">IN#8</span></div>
+              </div>
+            </div>
+
+            <!-- 8 Pilot Lamps Q0..Q7 (DO_16..DO_23) with Yellow Jacks -->
+            <div style="margin-top: 10px;">
+              <div style="font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); display: flex; justify-content: space-between;">
+                <span>OUTPUTS Q0..Q7 (DO_16..DO_23)</span>
+                <span style="color: #facc15;">JACK VÀNG</span>
+              </div>
+              <div class="switches-bank-row" id="cp-lamps-bank">
+                <div class="switch-unit"><span class="switch-label">Q0</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-cp-0"></div><span class="switch-label">DO16</span></div>
+                <div class="switch-unit"><span class="switch-label">Q1</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-cp-1"></div><span class="switch-label">DO17</span></div>
+                <div class="switch-unit"><span class="switch-label">Q2</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-cp-2"></div><span class="switch-label">DO18</span></div>
+                <div class="switch-unit"><span class="switch-label">Q3</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-cp-3"></div><span class="switch-label">DO19</span></div>
+                <div class="switch-unit"><span class="switch-label">Q4</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-cp-4"></div><span class="switch-label">OT#5</span></div>
+                <div class="switch-unit"><span class="switch-label">Q5</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-cp-5"></div><span class="switch-label">OT#6</span></div>
+                <div class="switch-unit"><span class="switch-label">Q6</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-cp-6"></div><span class="switch-label">OT#7</span></div>
+                <div class="switch-unit"><span class="switch-label">Q7</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-cp-7"></div><span class="switch-label">OT#8</span></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- I/O Box Peripheral Expansion (DI_24..31 / DO_24..31) -->
+          <section class="dock-section">
+            <div class="section-title">
+              <span>I/O BOX EXPANSION</span>
+              <span class="badge">SUB I/O MATRIX</span>
+            </div>
+
+            <!-- 8 Toggle Switches I0..I7 (DI_24..DI_31) -->
+            <div style="margin-top: 6px;">
+              <div style="font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); display: flex; justify-content: space-between;">
+                <span>INPUTS I0..I7 (DI_24..DI_31)</span>
+                <span style="color: #60a5fa;">I0: Reset | I7: MSG-SNDE</span>
+              </div>
+              <div class="switches-bank-row" id="iobox-switches-bank">
+                <div class="switch-unit"><span class="switch-label">I0</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="24" id="sw-box-0" title="Reset Chu Trình Thùng"><div class="metal-lever"></div></div><span class="switch-label">RST</span></div>
+                <div class="switch-unit"><span class="switch-label">I1</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="25" id="sw-box-1"><div class="metal-lever"></div></div><span class="switch-label">DI25</span></div>
+                <div class="switch-unit"><span class="switch-label">I2</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="26" id="sw-box-2"><div class="metal-lever"></div></div><span class="switch-label">DI26</span></div>
+                <div class="switch-unit"><span class="switch-label">I3</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="27" id="sw-box-3"><div class="metal-lever"></div></div><span class="switch-label">DI27</span></div>
+                <div class="switch-unit"><span class="switch-label">I4</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="28" id="sw-box-4"><div class="metal-lever"></div></div><span class="switch-label">DI28</span></div>
+                <div class="switch-unit"><span class="switch-label">I5</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="29" id="sw-box-5"><div class="metal-lever"></div></div><span class="switch-label">DI29</span></div>
+                <div class="switch-unit"><span class="switch-label">I6</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="30" id="sw-box-6"><div class="metal-lever"></div></div><span class="switch-label">DI30</span></div>
+                <div class="switch-unit"><span class="switch-label">I7</span><div class="banana-jack-blue"></div><div class="metal-toggle" data-bit="31" id="sw-box-7" title="Kích Hoạt Lệnh MSG-SNDE"><div class="metal-lever"></div></div><span class="switch-label">SND</span></div>
+              </div>
+            </div>
+
+            <!-- 8 Pilot Lamps Q0..Q7 (DO_24..DO_31) -->
+            <div style="margin-top: 10px;">
+              <div style="font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); display: flex; justify-content: space-between;">
+                <span>OUTPUTS Q0..Q7 (DO_24..DO_31)</span>
+                <span style="color: #facc15;">Q0: Done Packing</span>
+              </div>
+              <div class="switches-bank-row" id="iobox-lamps-bank">
+                <div class="switch-unit"><span class="switch-label">Q0</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-box-0" title="Đã Thả Xong Hàng"></div><span class="switch-label">DONE</span></div>
+                <div class="switch-unit"><span class="switch-label">Q1</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-box-1"></div><span class="switch-label">DO25</span></div>
+                <div class="switch-unit"><span class="switch-label">Q2</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-box-2"></div><span class="switch-label">DO26</span></div>
+                <div class="switch-unit"><span class="switch-label">Q3</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-box-3"></div><span class="switch-label">DO27</span></div>
+                <div class="switch-unit"><span class="switch-label">Q4</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-box-4"></div><span class="switch-label">DO28</span></div>
+                <div class="switch-unit"><span class="switch-label">Q5</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-box-5"></div><span class="switch-label">DO29</span></div>
+                <div class="switch-unit"><span class="switch-label">Q6</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-box-6"></div><span class="switch-label">DO30</span></div>
+                <div class="switch-unit"><span class="switch-label">Q7</span><div class="banana-jack-yellow"></div><div class="pilot-lamp" id="lamp-box-7"></div><span class="switch-label">DO31</span></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 32-Bit Digital Input & Output Logic Matrix -->
+          <section class="dock-section">
+            <div class="section-title">
+              <span>32-BIT I/O REAL-TIME MATRIX</span>
+              <span class="badge">MPE720 RAM</span>
+            </div>
+
+            <!-- DI 00..31 -->
+            <div style="margin-top: 4px;">
+              <div style="font-family: var(--font-mono); font-size: 8.5px; color: #4ade80; display: flex; justify-content: space-between;">
+                <span>DIGITAL INPUTS DI_00..DI_31 (IW00C80..81)</span>
+                <span id="label-di-hex">0x00000000</span>
+              </div>
+              <div class="matrix-bits-row" id="matrix-di-0-15"></div>
+              <div class="matrix-bits-row" id="matrix-di-16-31" style="margin-top: 2px;"></div>
+            </div>
+
+            <!-- DO 00..31 -->
+            <div style="margin-top: 10px;">
+              <div style="font-family: var(--font-mono); font-size: 8.5px; color: #facc15; display: flex; justify-content: space-between;">
+                <span>DIGITAL OUTPUTS DO_00..DO_31 (OW00C80..81)</span>
+                <span id="label-do-hex">0x00000000</span>
+              </div>
+              <div class="matrix-bits-row" id="matrix-do-0-15"></div>
+              <div class="matrix-bits-row" id="matrix-do-16-31" style="margin-top: 2px;"></div>
+            </div>
+          </section>
+        </div><!-- End Tab 3: tab-pane-control-panel -->
+
+        <!-- ==========================================================================
+             TAB 4: 218IFD UDP HIGH-SPEED ETHERNET SNIFFER (PHASE 3)
+             ========================================================================== -->
+        <div class="tab-pane" id="tab-pane-udp-sniffer">
+          <!-- 218IFD Easy Setting Configuration -->
+          <section class="dock-section">
+            <div class="section-title">
+              <span>218IFD ETHERNET EASY SETTING</span>
+              <span class="badge badge-success">UDP 10040</span>
+            </div>
+
+            <div style="background: #090d16; border: 1px solid #1e293b; border-radius: 6px; padding: 8px; font-family: var(--font-mono); font-size: 9.5px; line-height: 1.6;">
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 4px;">
+                <span style="color: var(--text-dim);">MP3300 (218IFD Client):</span>
+                <span style="color: var(--scada-cyan);">192.168.1.1 : 10001</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1e293b; padding: 4px 0;">
+                <span style="color: var(--text-dim);">YRC1000micro (Server):</span>
+                <span style="color: #4ade80;">192.168.1.11 : 10040</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding-top: 4px;">
+                <span style="color: var(--text-dim);">Protocol & Header:</span>
+                <span style="color: #facc15;">UDP / BIN (32-Byte YERC)</span>
+              </div>
+            </div>
+
+            <!-- Safety Interlock Banner -->
+            <div id="sniffer-mode-banner" style="margin-top: 8px; padding: 6px 8px; border-radius: 4px; font-family: var(--font-mono); font-size: 8.5px; display: flex; align-items: center; gap: 6px; background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; color: #4ade80;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span id="sniffer-mode-banner-text">SAFETY INTERLOCK: MODE REMOTE (2) - ETHERNET READY</span>
+            </div>
+          </section>
+
+          <!-- Test Packet Generator -->
+          <section class="dock-section">
+            <div class="section-title">
+              <span>TEST PACKET GENERATOR</span>
+              <span class="badge">CMD INJECTION</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px;">
+              <button class="scada-btn btn-secondary" id="btn-udp-servoon" style="font-size: 9.5px; padding: 6px 4px;">
+                CMD 0x83 SERVO ON
+              </button>
+              <button class="scada-btn btn-secondary" id="btn-udp-servooff" style="font-size: 9.5px; padding: 6px 4px;">
+                CMD 0x83 SERVO OFF
+              </button>
+              <button class="scada-btn btn-primary" id="btn-udp-startjob" style="font-size: 9.5px; padding: 6px 4px;">
+                CMD 0x86 START JOB
+              </button>
+              <button class="scada-btn btn-secondary" id="btn-udp-status" style="font-size: 9.5px; padding: 6px 4px;">
+                CMD 0x72 READ STATUS
+              </button>
+              <button class="scada-btn btn-secondary" id="btn-udp-pos" style="font-size: 9.5px; padding: 6px 4px;">
+                CMD 0x75 READ POS
+              </button>
+              <button class="scada-btn btn-secondary" id="btn-udp-msgsnde" style="font-size: 9.5px; padding: 6px 4px; border-color: #3b82f6; color: #60a5fa;">
+                MSG-SNDE TRIGGER
+              </button>
+            </div>
+          </section>
+
+          <!-- Real-time Hex Packet Sniffer Console -->
+          <section class="dock-section" style="display: flex; flex-direction: column;">
+            <div class="section-title">
+              <span>YERC FRAME HEX SNIFFER CONSOLE</span>
+              <button class="scada-btn btn-secondary" id="btn-udp-clear" style="padding: 2px 8px; font-size: 9px;">CLEAR</button>
+            </div>
+
+            <div class="hex-monitor-console" id="udp-hex-console">
+              <!-- Packet traces will appear here in real time -->
+            </div>
+          </section>
+        </div><!-- End Tab 4: tab-pane-udp-sniffer -->
+
+        <!-- ==========================================================================
+             TAB 5: OEE & SMART QUALITY ANALYTICS (GIAI ĐOẠN 3 - PHẦN 1)
+             ========================================================================== -->
+        <div class="tab-pane" id="tab-pane-oee">
+          <section class="scada-card oee-dashboard-card" style="border-left: 3px solid #22c55e;">
+            <div class="card-title">
+              <span style="color: #fff; font-weight: 800;">REAL-TIME OEE & QUALITY MANAGEMENT</span>
+              <span class="card-tag" style="background: rgba(34, 197, 94, 0.2); color: #4ade80;">INDUSTRY_4.0</span>
+            </div>
+
+            <!-- 1. Biểu đồ Vòng tròn trung tâm (Central Radial Gauge / Donut Chart) -->
+            <div class="oee-donut-row">
+              <div class="oee-donut-wrap">
+                <svg width="124" height="124" viewBox="0 0 124 124" class="oee-donut-svg">
+                  <circle cx="62" cy="62" r="52" fill="none" stroke="#1e293b" stroke-width="11"></circle>
+                  <circle id="oee-main-donut-ring" cx="62" cy="62" r="52" fill="none" stroke="#22c55e" stroke-width="11" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="0" transform="rotate(-90 62 62)" style="transition: stroke-dashoffset 0.45s ease, stroke 0.3s ease;"></circle>
+                </svg>
+                <div class="oee-donut-center">
+                  <span class="oee-donut-label">OEE</span>
+                  <span class="oee-donut-value" id="oee-main-donut-val">100.0%</span>
+                </div>
+              </div>
+
+              <div class="oee-donut-meta">
+                <div class="oee-tier-title">BENCHMARK CLASSIFICATION:</div>
+                <div class="oee-tier-name" id="oee-main-tier-text">WORLD CLASS</div>
+                <span class="oee-benchmark-badge" id="oee-main-benchmark-badge">World Class</span>
+                <div class="oee-planned-row">
+                  <span>Planned Time:</span>
+                  <b id="oee-main-planned-time">00:00:00</b>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Ba thanh Tiến trình ngang (3 Horizontal Progress Bars) -->
+            <div class="oee-bars-group">
+              <!-- Thanh 1: Availability -->
+              <div class="oee-metric-item">
+                <div class="oee-metric-header">
+                  <span class="oee-metric-name">Availability (Tính sẵn sàng - A):</span>
+                  <span class="oee-metric-val" id="oee-main-avail-val">100.0%</span>
+                </div>
+                <div class="oee-progress-track">
+                  <div class="oee-progress-fill" id="oee-main-avail-bar" style="width: 100%; background: #22c55e;"></div>
+                </div>
+                <div class="oee-metric-sub" id="oee-main-avail-sub">
+                  Run Time: <b style="color:#4ade80;">00:00:00</b> | Downtime: <b style="color:#94a3b8;">00:00:00</b>
+                </div>
+              </div>
+
+              <!-- Thanh 2: Performance -->
+              <div class="oee-metric-item">
+                <div class="oee-metric-header">
+                  <span class="oee-metric-name">Performance (Hiệu suất vận hành - P):</span>
+                  <span class="oee-metric-val" id="oee-main-perf-val">100.0%</span>
+                </div>
+                <div class="oee-progress-track">
+                  <div class="oee-progress-fill" id="oee-main-perf-bar" style="width: 100%; background: #22c55e;"></div>
+                </div>
+                <div class="oee-metric-sub" id="oee-main-perf-sub">
+                  Actual Speed: <b style="color:#38bdf8;">0 pcs/min</b> <span style="color:#64748b;">(Target: 60 pcs/min)</span>
+                </div>
+              </div>
+
+              <!-- Thanh 3: Quality -->
+              <div class="oee-metric-item">
+                <div class="oee-metric-header">
+                  <span class="oee-metric-name">Quality (Tỷ lệ chất lượng - Q):</span>
+                  <span class="oee-metric-val" id="oee-main-qual-val">100.0%</span>
+                </div>
+                <div class="oee-progress-track">
+                  <div class="oee-progress-fill" id="oee-main-qual-bar" style="width: 100%; background: #22c55e;"></div>
+                </div>
+                <div class="oee-metric-sub" id="oee-main-qual-sub">
+                  OK: <b style="color:#4ade80;">0</b> / NG: <b style="color:#ef4444;">0</b> <span style="color:#64748b;">(Inspected: 0)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bảng Công thức Chuẩn Industry 4.0 -->
+            <div class="oee-formula-note">
+              <div><b>OEE Formula:</b> OEE = (A × P × Q) / 10000</div>
+              <div>• <b>World Class:</b> ≥ 85% (<span style="color:#22c55e;">Green</span>) | <b>Good:</b> 65–85% (<span style="color:#f59e0b;">Amber</span>) | <b>Lagging:</b> &lt; 65% (<span style="color:#ef4444;">Red</span>)</div>
+            </div>
+
+            <!-- 3. Bảng Thống kê Lô hàng & Sự kiện (Batch & Event Log) -->
+            <div class="oee-log-section">
+              <div class="oee-log-header">
+                <span>📋 NHẬT KÝ LÔ HÀNG & SỰ KIỆN (LIVE EVENT LOG)</span>
+              </div>
+              <div class="oee-event-log-box" id="oee-main-event-log"></div>
+            </div>
+
+            <!-- 4. Nút Đặt lại Ca làm việc (Shift Reset) -->
+            <button class="action-btn oee-reset-btn" id="btn-reset-oee-shift" title="Xóa toàn bộ bộ đếm và thời gian về 0 để bắt đầu ca sản xuất mới">
+              🔄 Reset Shift / Clear OEE Data
+            </button>
+          </section>
+        </div><!-- End Tab 5: tab-pane-oee -->
+
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ==========================================================================
+       SAFETY INTERLOCK TRIPPED WARNING MODAL / POPUP
+       Kích hoạt ngay khi mở cửa rào an toàn trong lúc hệ thống đang chạy
+       ========================================================================== -->
+  <div id="safety-interlock-modal" class="safety-modal-overlay" style="display: none;">
+    <div class="safety-modal-box">
+      <div class="safety-modal-header">
+        <div class="safety-siren-icon">⚡</div>
+        <div>
+          <div class="safety-modal-title">[WARNING] SAFETY INTERLOCK TRIPPED: MAINTENANCE DOOR OPEN!</div>
+          <div class="safety-modal-subtitle">NGẮT ĐỘNG LỰC TOÀN CELL THEO TIÊU CHUẨN AN TOÀN LAO ĐỘNG ISO 13849-1 (CAT 4 / PLe)</div>
+        </div>
+      </div>
+      <div class="safety-modal-body">
+        <div class="safety-alert-msg">
+          Phát hiện <b>CỬA HÀNG RÀO BẢO TRÌ ĐANG BỊ MỞ (SAFETY GATE OPEN)</b>! Mạch khóa liên động an toàn (Safety Interlock) đã tự động thực thi các hành động bảo vệ cấp cao nhất:
+        </div>
+        <div class="safety-status-grid">
+          <div class="safety-status-item">
+            <span class="safety-status-label">ROBOT SERVO DRIVES:</span>
+            <span class="safety-status-val danger">STO (SAFE TORQUE OFF) // NGẮT NGUỒN</span>
+          </div>
+          <div class="safety-status-item">
+            <span class="safety-status-label">CONVEYORS 1, 2, 3:</span>
+            <span class="safety-status-val danger">EMERGENCY STOPPED // DỪNG KHẨN CẤP</span>
+          </div>
+          <div class="safety-status-item">
+            <span class="safety-status-label">DOOR INTERLOCK:</span>
+            <span class="safety-status-val danger" id="modal-interlock-status">CONTACT OPEN // TIẾP ĐIỂM HỞ</span>
+          </div>
+          <div class="safety-status-item">
+            <span class="safety-status-label">ANDON TOWER LIGHT:</span>
+            <span class="safety-status-val danger">RED FLASHING // ĐÈN ĐỎ NHẤP NHÁY</span>
+          </div>
+        </div>
+        <div class="safety-guide-box">
+          <b>QUY TRÌNH KHÔI PHỤC HOẠT ĐỘNG AN TOÀN (RECOVERY PROCEDURE):</b>
+          <ol style="margin: 6px 0 0 18px; padding: 0; line-height: 1.6;">
+            <li>Kỹ thuật viên kết thúc công tác kiểm tra/bảo trì và rút hoàn toàn khỏi vùng nguy hiểm của Robot.</li>
+            <li>Đóng kín cánh cửa bảo trì rào chắn (tiếp điểm khóa an toàn cơ học đóng lại).</li>
+            <li>Bấm nút <b>[RESET FAULT / ROBOT ON]</b> bên dưới để xóa lỗi, khởi động lại nguồn Servo và đưa đèn Andon về trạng thái STANDBY.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="safety-modal-actions">
+        <button class="scada-btn btn-warning" id="btn-modal-close-door" style="padding: 10px 18px; font-weight: 800; font-size: 11px;">
+          🚪 1. ĐÓNG CỬA BẢO TRÌ
+        </button>
+        <button class="scada-btn btn-success" id="btn-modal-reset-interlock" style="padding: 10px 22px; font-weight: 900; font-size: 11px; background: #15803d; border-color: #4ade80;">
+          🔄 2. RESET FAULT / ROBOT ON
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main ES Module Entry Point -->
+  <script type="module" src="js/main.js?v=3.6"></script>
+  <script>
+    if (window.location.protocol === 'file:') {
+      const warn = document.createElement('div');
+      warn.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(9,13,22,0.95);display:flex;align-items:center;justify-content:center;color:#f8fafc;font-family:Segoe UI,sans-serif;padding:24px;';
+      warn.innerHTML = '<div style="max-width:560px;background:#0f172a;border:2px solid #ef4444;border-radius:10px;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,0.8);"><h2 style="color:#f87171;margin:0 0 12px 0;font-size:18px;">⚠️ Trình duyệt chặn ES Modules khi mở trực tiếp file://</h2><p style="color:#cbd5e1;font-size:14px;line-height:1.6;margin:0 0 16px 0;">Bạn đang mở trực tiếp file <code>index.html</code> từ ổ cứng (<code>file://</code>), nên trình duyệt chặn không cho nạp mô hình 3D và bộ điều khiển.</p><p style="color:#4ade80;font-size:14px;font-weight:700;margin:0 0 16px 0;">👉 Hãy truy cập qua máy chủ nội bộ (đã được bật sẵn): <a href="http://localhost:8080" style="color:#38bdf8;text-decoration:underline;">http://localhost:8080</a></p></div>';
+      document.body.appendChild(warn);
+    }
+  </script>
+</body>
+</html>
